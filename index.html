@@ -1,0 +1,346 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SearXNG Search</title>
+    <link rel="icon" type="image/svg+xml" href="icons/favicon.svg">
+    <link rel="icon" type="image/png" href="icons/favicon.png">
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <!-- Toast Container -->
+    <div id="toast-container"></div>
+
+    <!-- Header -->
+    <header id="header">
+        <div class="header-left">
+            <div class="logo" id="logo-btn" title="Home">
+                <svg class="logo-icon" viewBox="0 0 24 24" width="28" height="28">
+                    <circle cx="11" cy="11" r="7" fill="none" stroke="currentColor" stroke-width="2"/>
+                    <line x1="16.5" y1="16.5" x2="21" y2="21" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                </svg>
+                <span class="logo-text">SearXNG</span>
+            </div>
+        </div>
+        <div class="header-right">
+            <button id="history-btn" class="icon-btn" title="Search History (Ctrl+H)">
+                <svg viewBox="0 0 24 24" width="20" height="20"><path d="M13 3a9 9 0 0 0-9 9H1l3.89 3.89.07.14L9 12H6c0-3.87 3.13-7 7-7s7 3.13 7 7-3.13 7-7 7c-1.93 0-3.68-.79-4.94-2.06l-1.42 1.42A8.954 8.954 0 0 0 13 21a9 9 0 0 0 0-18zm-1 5v5l4.28 2.54.72-1.21-3.5-2.08V8H12z" fill="currentColor"/></svg>
+            </button>
+            <button id="instance-btn" class="icon-btn" title="Select Instance">
+                <svg viewBox="0 0 24 24" width="20" height="20"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 17.93c-3.95-.49-7-3.85-7-7.93 0-.62.08-1.21.21-1.79L9 15v1c0 1.1.9 2 2 2v1.93zm6.9-2.54c-.26-.81-1-1.39-1.9-1.39h-1v-3c0-.55-.45-1-1-1H8v-2h2c.55 0 1-.45 1-1V7h2c1.1 0 2-.9 2-2v-.41c2.93 1.19 5 4.06 5 7.41 0 2.08-.8 3.97-2.1 5.39z" fill="currentColor"/></svg>
+            </button>
+            <button id="settings-btn" class="icon-btn" title="Settings">
+                <svg viewBox="0 0 24 24" width="20" height="20"><path d="M19.14 12.94c.04-.3.06-.61.06-.94 0-.32-.02-.64-.07-.94l2.03-1.58a.49.49 0 0 0 .12-.61l-1.92-3.32a.49.49 0 0 0-.59-.22l-2.39.96c-.5-.38-1.03-.7-1.62-.94l-.36-2.54a.484.484 0 0 0-.48-.41h-3.84c-.24 0-.43.17-.47.41l-.36 2.54c-.59.24-1.13.57-1.62.94l-2.39-.96c-.22-.08-.47 0-.59.22L2.74 8.87c-.12.21-.08.47.12.61l2.03 1.58c-.05.3-.07.62-.07.94s.02.64.07.94l-2.03 1.58a.49.49 0 0 0-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.38 1.03.7 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .44-.17.47-.41l.36-2.54c.59-.24 1.13-.56 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32c.12-.22.07-.47-.12-.61l-2.01-1.58zM12 15.6c-1.98 0-3.6-1.62-3.6-3.6s1.62-3.6 3.6-3.6 3.6 1.62 3.6 3.6-1.62 3.6-3.6 3.6z" fill="currentColor"/></svg>
+            </button>
+            <button id="theme-btn" class="icon-btn" title="Toggle Theme">
+                <svg class="theme-dark" viewBox="0 0 24 24" width="20" height="20"><path d="M12 3a9 9 0 1 0 9 9c0-.46-.04-.92-.1-1.36a5.389 5.389 0 0 1-4.4 2.26 5.403 5.403 0 0 1-3.14-9.8c-.44-.06-.9-.1-1.36-.1z" fill="currentColor"/></svg>
+                <svg class="theme-light" viewBox="0 0 24 24" width="20" height="20"><path d="M12 7c-2.76 0-5 2.24-5 5s2.24 5 5 5 5-2.24 5-5-2.24-5-5-5zM2 13h2c.55 0 1-.45 1-1s-.45-1-1-1H2c-.55 0-1 .45-1 1s.45 1 1 1zm18 0h2c.55 0 1-.45 1-1s-.45-1-1-1h-2c-.55 0-1 .45-1 1s.45 1 1 1zM11 2v2c0 .55.45 1 1 1s1-.45 1-1V2c0-.55-.45-1-1-1s-1 .45-1 1zm0 18v2c0 .55.45 1 1 1s1-.45 1-1v-2c0-.55-.45-1-1-1s-1 .45-1 1zM5.99 4.58a.996.996 0 0 0-1.41 0 .996.996 0 0 0 0 1.41l1.06 1.06c.39.39 1.03.39 1.41 0s.39-1.03 0-1.41L5.99 4.58zm12.37 12.37a.996.996 0 0 0-1.41 0 .996.996 0 0 0 0 1.41l1.06 1.06c.39.39 1.03.39 1.41 0a.996.996 0 0 0 0-1.41l-1.06-1.06zm1.06-10.96a.996.996 0 0 0 0-1.41.996.996 0 0 0-1.41 0l-1.06 1.06c-.39.39-.39 1.03 0 1.41s1.03.39 1.41 0l1.06-1.06zM7.05 18.36a.996.996 0 0 0 0-1.41.996.996 0 0 0-1.41 0l-1.06 1.06c-.39.39-.39 1.03 0 1.41s1.03.39 1.41 0l1.06-1.06z" fill="currentColor"/></svg>
+            </button>
+        </div>
+    </header>
+
+    <!-- Search Section -->
+    <section id="search-section">
+        <div class="search-container">
+            <div class="search-bar">
+                <svg class="search-icon" viewBox="0 0 24 24" width="22" height="22"><circle cx="11" cy="11" r="7" fill="none" stroke="currentColor" stroke-width="2"/><line x1="16.5" y1="16.5" x2="21" y2="21" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+                <input type="text" id="search-input" placeholder="Search the web privately..." autocomplete="off" spellcheck="false">
+                <button id="clear-btn" class="clear-btn" title="Clear">&times;</button>
+                <button id="search-btn" class="search-submit-btn" title="Search (Enter)">
+                    <svg viewBox="0 0 24 24" width="20" height="20"><path d="M5 12h14M12 5l7 7-7 7" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                </button>
+            </div>
+            <!-- Autocomplete Dropdown -->
+            <div id="autocomplete-dropdown" class="autocomplete-dropdown hidden"></div>
+        </div>
+
+        <!-- Category Tabs -->
+        <div class="category-tabs" id="category-tabs">
+            <button class="cat-tab active" data-category="general">
+                <svg viewBox="0 0 24 24" width="16" height="16"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 17.93c-3.95-.49-7-3.85-7-7.93 0-.62.08-1.21.21-1.79L9 15v1c0 1.1.9 2 2 2v1.93zm6.9-2.54c-.26-.81-1-1.39-1.9-1.39h-1v-3c0-.55-.45-1-1-1H8v-2h2c.55 0 1-.45 1-1V7h2c1.1 0 2-.9 2-2v-.41c2.93 1.19 5 4.06 5 7.41 0 2.08-.8 3.97-2.1 5.39z" fill="currentColor"/></svg>
+                <span>General</span>
+            </button>
+            <button class="cat-tab" data-category="images">
+                <svg viewBox="0 0 24 24" width="16" height="16"><path d="M21 19V5c0-1.1-.9-2-2-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2zM8.5 13.5l2.5 3.01L14.5 12l4.5 6H5l3.5-4.5z" fill="currentColor"/></svg>
+                <span>Images</span>
+            </button>
+            <button class="cat-tab" data-category="videos">
+                <svg viewBox="0 0 24 24" width="16" height="16"><path d="M17 10.5V7c0-.55-.45-1-1-1H4c-.55 0-1 .45-1 1v10c0 .55.45 1 1 1h12c.55 0 1-.45 1-1v-3.5l4 4v-11l-4 4z" fill="currentColor"/></svg>
+                <span>Videos</span>
+            </button>
+            <button class="cat-tab" data-category="news">
+                <svg viewBox="0 0 24 24" width="16" height="16"><path d="M21 5c-1.11-.35-2.33-.5-3.5-.5-1.95 0-4.05.4-5.5 1.5-1.45-1.1-3.55-1.5-5.5-1.5S2.45 4.9 1 6v14.65c0 .25.25.5.5.5.1 0 .15-.05.25-.05C3.1 20.45 5.05 20 6.5 20c1.95 0 4.05.4 5.5 1.5 1.35-.85 3.8-1.5 5.5-1.5 1.65 0 3.35.3 4.75 1.05.1.05.15.05.25.05.25 0 .5-.25.5-.5V6c-.6-.45-1.25-.75-2-1zm0 13.5c-1.1-.35-2.3-.5-3.5-.5-1.7 0-4.15.65-5.5 1.5V8c1.35-.85 3.8-1.5 5.5-1.5 1.2 0 2.4.15 3.5.5v11.5z" fill="currentColor"/></svg>
+                <span>News</span>
+            </button>
+            <button class="cat-tab" data-category="map">
+                <svg viewBox="0 0 24 24" width="16" height="16"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z" fill="currentColor"/></svg>
+                <span>Maps</span>
+            </button>
+            <button class="cat-tab" data-category="science">
+                <svg viewBox="0 0 24 24" width="16" height="16"><path d="M7 2v11h3v9l7-12h-4l4-8z" fill="currentColor"/></svg>
+                <span>Science/IT</span>
+            </button>
+            <button class="cat-tab" data-category="music">
+                <svg viewBox="0 0 24 24" width="16" height="16"><path d="M12 3v10.55c-.59-.34-1.27-.55-2-.55-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4V7h4V3h-6z" fill="currentColor"/></svg>
+                <span>Music</span>
+            </button>
+            <button class="cat-tab" data-category="files">
+                <svg viewBox="0 0 24 24" width="16" height="16"><path d="M14 2H6c-1.1 0-1.99.9-1.99 2L4 20c0 1.1.89 2 1.99 2H18c1.1 0 2-.9 2-2V8l-6-6zm2 16H8v-2h8v2zm0-4H8v-2h8v2zm-3-5V3.5L18.5 9H13z" fill="currentColor"/></svg>
+                <span>Files</span>
+            </button>
+        </div>
+
+        <!-- Search Filters -->
+        <div class="search-filters" id="search-filters">
+            <div class="filter-group">
+                <label for="filter-language">Language</label>
+                <select id="filter-language">
+                    <option value="auto">Auto-detect</option>
+                    <option value="en">English</option>
+                    <option value="de">German</option>
+                    <option value="fr">French</option>
+                    <option value="es">Spanish</option>
+                    <option value="it">Italian</option>
+                    <option value="pt">Portuguese</option>
+                    <option value="nl">Dutch</option>
+                    <option value="pl">Polish</option>
+                    <option value="ru">Russian</option>
+                    <option value="ja">Japanese</option>
+                    <option value="zh">Chinese</option>
+                    <option value="ko">Korean</option>
+                    <option value="ar">Arabic</option>
+                    <option value="hi">Hindi</option>
+                </select>
+            </div>
+            <div class="filter-group">
+                <label for="filter-time">Time</label>
+                <select id="filter-time">
+                    <option value="">Any time</option>
+                    <option value="day">Past 24h</option>
+                    <option value="month">Past month</option>
+                    <option value="year">Past year</option>
+                </select>
+            </div>
+            <div class="filter-group">
+                <label for="filter-safesearch">SafeSearch</label>
+                <select id="filter-safesearch">
+                    <option value="0">Off</option>
+                    <option value="1">Moderate</option>
+                    <option value="2">Strict</option>
+                </select>
+            </div>
+        </div>
+    </section>
+
+    <!-- Results Section -->
+    <main id="results-section" class="hidden">
+        <div id="results-header" class="results-header"></div>
+        <div id="results-container"></div>
+        <div id="pagination" class="hidden">
+            <button id="prev-page" class="page-btn" disabled>
+                <svg viewBox="0 0 24 24" width="18" height="18"><path d="M15 18l-6-6 6-6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+                Previous
+            </button>
+            <span id="page-info">Page 1</span>
+            <button id="next-page" class="page-btn">
+                Next
+                <svg viewBox="0 0 24 24" width="18" height="18"><path d="M9 18l6-6-6-6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+            </button>
+        </div>
+    </main>
+
+    <!-- Loading Indicator -->
+    <div id="loading" class="hidden">
+        <div class="spinner"></div>
+        <span>Searching...</span>
+    </div>
+
+    <!-- No Results -->
+    <div id="no-results" class="hidden">
+        <svg viewBox="0 0 24 24" width="48" height="48"><circle cx="11" cy="11" r="7" fill="none" stroke="currentColor" stroke-width="2"/><line x1="16.5" y1="16.5" x2="21" y2="21" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><line x1="8" y1="11" x2="14" y2="11" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+        <h3>No results found</h3>
+        <p>Try different keywords or check your instance connection.</p>
+    </div>
+
+    <!-- Error State -->
+    <div id="error-state" class="hidden">
+        <svg viewBox="0 0 24 24" width="48" height="48"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z" fill="currentColor"/></svg>
+        <h3>Connection Error</h3>
+        <p id="error-message">Could not connect to SearXNG instance.</p>
+        <button id="retry-btn" class="action-btn">Retry</button>
+    </div>
+
+    <!-- Instance Modal -->
+    <div id="instance-modal" class="modal hidden">
+        <div class="modal-backdrop"></div>
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Select Instance</h2>
+                <button class="modal-close">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="instance-current">
+                    <span class="label">Current Instance</span>
+                    <span id="instance-display" class="value"></span>
+                </div>
+                <div class="instance-mode-toggle">
+                    <button id="mode-local" class="mode-btn active" data-mode="local">Local (Docker)</button>
+                    <button id="mode-public" class="mode-btn" data-mode="public">Public Instances</button>
+                    <button id="mode-custom" class="mode-btn" data-mode="custom">Custom URL</button>
+                </div>
+                <div id="panel-local" class="instance-panel">
+                    <p class="instance-hint">Connect to your local SearXNG Docker instance.</p>
+                    <div class="instance-field">
+                        <label>URL</label>
+                        <input type="text" id="local-url" placeholder="http://localhost:8080">
+                    </div>
+                    <button id="local-connect" class="action-btn">Connect</button>
+                </div>
+                <div id="panel-public" class="instance-panel hidden">
+                    <div class="instance-search">
+                        <input type="text" id="public-search" placeholder="Search instances...">
+                        <button id="refresh-public" class="icon-btn" title="Refresh list" style="margin-left:4px;">
+                            <svg viewBox="0 0 24 24" width="18" height="18"><path d="M17.65 6.35A7.958 7.958 0 0 0 12 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08A5.99 5.99 0 0 1 12 18c-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z" fill="currentColor"/></svg>
+                        </button>
+                    </div>
+                    <div id="public-list" class="instance-list">
+                        <div class="instance-loading">Loading instances from searx.space...</div>
+                    </div>
+                </div>
+                <div id="panel-custom" class="instance-panel hidden">
+                    <p class="instance-hint">Enter a SearXNG instance URL. Make sure it has JSON API enabled and CORS headers set.</p>
+                    <div class="instance-field">
+                        <label>Instance URL</label>
+                        <input type="text" id="custom-url-input" placeholder="https://searx.example.com">
+                    </div>
+                    <button id="custom-add" class="action-btn">Add & Connect</button>
+                    <div id="custom-list" class="instance-list" style="margin-top:12px;"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Settings Modal -->
+    <div id="settings-modal" class="modal hidden">
+        <div class="modal-backdrop"></div>
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Settings</h2>
+                <button class="modal-close">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="setting-group">
+                    <h3>Search</h3>
+                    <div class="setting-item">
+                        <label>Default Language</label>
+                        <select id="setting-language">
+                            <option value="auto">Auto-detect</option>
+                            <option value="en">English</option>
+                            <option value="de">German</option>
+                            <option value="fr">French</option>
+                            <option value="es">Spanish</option>
+                            <option value="it">Italian</option>
+                            <option value="pt">Portuguese</option>
+                            <option value="nl">Dutch</option>
+                            <option value="ru">Russian</option>
+                            <option value="ja">Japanese</option>
+                            <option value="zh">Chinese</option>
+                        </select>
+                    </div>
+                    <div class="setting-item">
+                        <label>SafeSearch</label>
+                        <select id="setting-safesearch">
+                            <option value="0">Off</option>
+                            <option value="1">Moderate</option>
+                            <option value="2">Strict</option>
+                        </select>
+                    </div>
+                    <div class="setting-item">
+                        <label>Default Category</label>
+                        <select id="setting-default-category">
+                            <option value="general">General</option>
+                            <option value="images">Images</option>
+                            <option value="videos">Videos</option>
+                            <option value="news">News</option>
+                            <option value="map">Maps</option>
+                            <option value="science">Science/IT</option>
+                            <option value="music">Music</option>
+                            <option value="files">Files</option>
+                        </select>
+                    </div>
+                    <div class="setting-item">
+                        <label>Open Links in New Tab</label>
+                        <label class="toggle">
+                            <input type="checkbox" id="setting-newtab" checked>
+                            <span class="toggle-slider"></span>
+                        </label>
+                    </div>
+                </div>
+                <div class="setting-group">
+                    <h3>Appearance</h3>
+                    <div class="setting-item">
+                        <label>Theme</label>
+                        <select id="setting-theme">
+                            <option value="dark">Dark</option>
+                            <option value="light">Light</option>
+                            <option value="auto">System</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="setting-group">
+                    <h3>Data</h3>
+                    <div class="setting-item">
+                        <label>Search History</label>
+                        <label class="toggle">
+                            <input type="checkbox" id="setting-history" checked>
+                            <span class="toggle-slider"></span>
+                        </label>
+                    </div>
+                    <div class="setting-item">
+                        <label>Autocomplete</label>
+                        <label class="toggle">
+                            <input type="checkbox" id="setting-autocomplete" checked>
+                            <span class="toggle-slider"></span>
+                        </label>
+                    </div>
+                    <div class="setting-item setting-actions">
+                        <button id="clear-history-btn" class="action-btn danger">Clear History</button>
+                        <button id="clear-cache-btn" class="action-btn danger">Clear Cache</button>
+                        <button id="clear-all-btn" class="action-btn danger">Clear All Data</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- History Modal -->
+    <div id="history-modal" class="modal hidden">
+        <div class="modal-backdrop"></div>
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Search History</h2>
+                <button class="modal-close">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="history-search">
+                    <input type="text" id="history-search" placeholder="Filter history...">
+                </div>
+                <div id="history-list" class="history-list"></div>
+                <div id="history-empty" class="history-empty hidden">No search history yet.</div>
+                <div style="text-align:right;margin-top:12px;">
+                    <button id="clear-all-history" class="action-btn danger">Clear All History</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="js/config.js"></script>
+    <script src="js/storage.js"></script>
+    <script src="js/searx-api.js"></script>
+    <script src="js/instances.js"></script>
+    <script src="js/ui.js"></script>
+    <script src="js/app.js"></script>
+</body>
+</html>

@@ -1,0 +1,214 @@
+use_default_settings: true
+
+general:
+  instance_name: "SearXNG Search Engine"
+  debug: false
+
+search:
+  safe_search: 0
+  autocomplete: "duckduckgo"
+  default_lang: "auto"
+  formats:
+    - html
+    - json
+    - csv
+    - rss
+
+server:
+  port: 8080
+  bind_address: "0.0.0.0"
+  secret_key: "change-this-to-a-random-string"
+  base_url: "http://localhost:8080/"
+  image_proxy: true
+  method: "GET"
+
+ui:
+  static_use_hash: true
+  default_locale: ""
+  query_in_title: false
+  infinite_scroll: false
+  center_alignment: false
+  default_theme: "simple"
+  theme_args:
+    simple_style: "auto"
+
+outgoing:
+  request_timeout: 10.0
+  max_request_timeout: 15.0
+  useragent_suffix: ""
+  pool_connections: 100
+  pool_maxsize: 20
+
+engines:
+  - name: google
+    engine: google
+    shortcut: g
+    use_mobile_ui: false
+
+  - name: bing
+    engine: bing
+    shortcut: b
+
+  - name: duckduckgo
+    engine: duckduckgo
+    shortcut: ddg
+
+  - name: brave
+    engine: brave
+    shortcut: br
+
+  - name: qwant
+    engine: qwant
+    shortcut: qw
+
+  - name: startpage
+    engine: startpage
+    shortcut: sp
+
+  - name: wikipedia
+    engine: wikipedia
+    shortcut: wp
+
+  - name: youtube
+    engine: youtube
+    shortcut: yt
+    disabled: false
+
+  - name: dailymotion
+    engine: dailymotion
+    shortcut: dm
+
+  - name: vimeo
+    engine: vimeo
+    shortcut: vm
+
+  - name: openstreetmap
+    engine: openstreetmap
+    shortcut: osm
+
+  - name: arxiv
+    engine: arxiv
+    shortcut: ar
+    categories: ["science"]
+
+  - name: github
+    engine: github
+    shortcut: gh
+    categories: ["it"]
+
+  - name: stackoverflow
+    engine: stackoverflow
+    shortcut: st
+    categories: ["it", "q&a"]
+
+  - name: soundcloud
+    engine: soundcloud
+    shortcut: sc
+    categories: ["music"]
+
+  - name: reddit
+    engine: reddit
+    shortcut: re
+    categories: ["social media"]
+
+  - name: unsplash
+    engine: unsplash
+    shortcut: us
+    categories: ["images"]
+
+  - name: flickr
+    engine: flickr
+    shortcut: fl
+    categories: ["images"]
+
+  - name: pixabay
+    engine: pixabay
+    shortcut: pix
+    categories: ["images"]
+
+  - name: google news
+    engine: google_news
+    shortcut: gn
+    categories: ["news"]
+
+  - name: bing news
+    engine: bing_news
+    shortcut: bn
+    categories: ["news"]
+
+  - name: bing images
+    engine: bing_images
+    shortcut: bi
+    categories: ["images"]
+
+  - name: google images
+    engine: google_images
+    shortcut: gi
+    categories: ["images"]
+
+  - name: bing videos
+    engine: bing_videos
+    shortcut: bv
+    categories: ["videos"]
+
+  - name: google videos
+    engine: google_videos
+    shortcut: gv
+    categories: ["videos"]
+
+  - name: piratebay
+    engine: piratebay
+    shortcut: pb
+    categories: ["files"]
+
+  - name: solidtorrents
+    engine: solidtorrents
+    shortcut: sol
+    categories: ["files"]
+
+  - name: 1337x
+    engine: 1337x
+    shortcut: 1337
+    categories: ["files"]
+
+  - name: pubmed
+    engine: pubmed
+    shortcut: pub
+    categories: ["science"]
+
+  - name: semantic scholar
+    engine: semantic_scholar
+    shortcut: se
+    categories: ["science"]
+
+  - name: deezer
+    engine: deezer
+    shortcut: dz
+    categories: ["music"]
+
+  - name: bandcamp
+    engine: bandcamp
+    shortcut: bc
+    categories: ["music"]
+
+  - name: apple maps
+    engine: apple_maps
+    shortcut: am
+    categories: ["map"]
+
+  - name: peertube
+    engine: peertube
+    shortcut: pt
+    categories: ["videos"]
+
+categories_as_tabs:
+  general:
+  images:
+  videos:
+  news:
+  music:
+  it:
+  science:
+  files:
+  map:
+  social media:
