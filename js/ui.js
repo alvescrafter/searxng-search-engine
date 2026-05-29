@@ -444,8 +444,18 @@ const UI = {
     },
     hideError() { const el = this.$('#error-state'); if (el) el.classList.add('hidden'); },
 
-    showResults() { const el = this.$('#results-section'); if (el) el.classList.remove('hidden'); },
-    hideResults() { const el = this.$('#results-section'); if (el) el.classList.add('hidden'); },
+    showResults() {
+        const mainLayout = this.$('#main-layout');
+        const resultsSection = this.$('#results-section');
+        if (mainLayout) mainLayout.classList.remove('hidden');
+        if (resultsSection) resultsSection.classList.remove('hidden');
+    },
+    hideResults() {
+        const mainLayout = this.$('#main-layout');
+        const resultsSection = this.$('#results-section');
+        if (mainLayout) mainLayout.classList.add('hidden');
+        if (resultsSection) resultsSection.classList.add('hidden');
+    },
 
     // --- Search Section Shrink ---
     shrinkSearch() { const el = this.$('#search-section'); if (el) el.classList.add('has-results'); },
@@ -565,5 +575,239 @@ const UI = {
         // Autocomplete
         const acToggle = this.$('#setting-autocomplete');
         if (acToggle) acToggle.checked = settings.autocompleteEnabled !== false;
+    },
+
+    // ========================================
+    // AI Sidebar Methods
+    // ========================================
+
+    // --- Toggle AI Sidebar ---
+    toggleAISidebar(show) {
+        const sidebar = this.$('#ai-sidebar');
+        const layout = this.$('#main-layout');
+        if (!sidebar || !layout) return;
+
+        if (show === undefined) {
+            show = sidebar.classList.contains('hidden');
+        }
+
+        if (show) {
+            sidebar.classList.remove('hidden');
+            layout.classList.add('ai-sidebar-open');
+        } else {
+            sidebar.classList.add('hidden');
+            layout.classList.remove('ai-sidebar-open');
+        }
+
+        // Save state
+        const aiSettings = Storage.getAISettings();
+        aiSettings.sidebarOpen = show;
+        Storage.saveAISettings(aiSettings);
+
+        return show;
+    },
+
+    // --- Show AI Sidebar ---
+    showAISidebar() {
+        return this.toggleAISidebar(true);
+    },
+
+    // --- Hide AI Sidebar ---
+    hideAISidebar() {
+        return this.toggleAISidebar(false);
+    },
+
+    // --- Update AI Status ---
+    updateAIStatus(status, model = '') {
+        const statusText = this.$('#ai-status-text');
+        const modelBadge = this.$('#ai-model-badge');
+
+        if (!statusText) return;
+
+        statusText.className = 'ai-status-text';
+
+        switch (status) {
+            case 'connected':
+                statusText.className = 'ai-status-text connected';
+                statusText.textContent = 'Connected';
+                break;
+            case 'generating':
+                statusText.className = 'ai-status-text generating';
+                statusText.textContent = 'Generating...';
+                break;
+            case 'error':
+                statusText.className = 'ai-status-text error';
+                statusText.textContent = 'Error';
+                break;
+            case 'disconnected':
+            default:
+                statusText.textContent = 'No AI connected';
+                break;
+        }
+
+        if (modelBadge) {
+            if (model) {
+                modelBadge.textContent = model;
+                modelBadge.classList.remove('hidden');
+            } else {
+                modelBadge.classList.add('hidden');
+            }
+        }
+    },
+
+    // --- Update AI Summary Content ---
+    updateAISummaryContent(content, isFinal = false) {
+        const welcome = this.$('#ai-welcome');
+        const output = this.$('#ai-summary-output');
+        const loading = this.$('#ai-loading');
+        const errorEl = this.$('#ai-error');
+
+        if (welcome) welcome.classList.add('hidden');
+        if (errorEl) errorEl.classList.add('hidden');
+
+        if (!content) {
+            if (loading) loading.classList.remove('hidden');
+            if (output) output.classList.add('hidden');
+            return;
+        }
+
+        if (loading) loading.classList.add('hidden');
+        if (output) {
+            output.classList.remove('hidden');
+            output.innerHTML = AISummary.renderMarkdown(content);
+            if (isFinal) {
+                output.classList.add('ai-summary-complete');
+            }
+            // Auto-scroll to bottom
+            output.scrollTop = output.scrollHeight;
+        }
+    },
+
+    // --- Update AI Chat Content ---
+    updateAIChatContent(content, isFinal = false) {
+        const messagesEl = this.$('#ai-chat-messages');
+        if (!messagesEl) return;
+
+        messagesEl.classList.remove('hidden');
+
+        // Find or create the last assistant message
+        let lastMsg = messagesEl.querySelector('.ai-chat-msg.assistant:last-child');
+        if (!lastMsg) {
+            lastMsg = document.createElement('div');
+            lastMsg.className = 'ai-chat-msg assistant';
+            messagesEl.appendChild(lastMsg);
+        }
+
+        lastMsg.innerHTML = AISummary.renderMarkdown(content);
+        messagesEl.scrollTop = messagesEl.scrollHeight;
+    },
+
+    // --- Add Chat Message to UI ---
+    addChatMessage(role, content) {
+        const messagesEl = this.$('#ai-chat-messages');
+        if (!messagesEl) return;
+
+        messagesEl.classList.remove('hidden');
+
+        const msg = document.createElement('div');
+        msg.className = `ai-chat-msg ${role}`;
+        msg.textContent = content;
+        messagesEl.appendChild(msg);
+        messagesEl.scrollTop = messagesEl.scrollHeight;
+    },
+
+    // --- Show AI Error ---
+    showAIError(message) {
+        const errorEl = this.$('#ai-error');
+        const loading = this.$('#ai-loading');
+        const welcome = this.$('#ai-welcome');
+
+        if (loading) loading.classList.add('hidden');
+        if (welcome) welcome.classList.add('hidden');
+
+        if (errorEl) {
+            errorEl.textContent = message;
+            errorEl.classList.remove('hidden');
+        }
+    },
+
+    // --- Show AI Loading ---
+    showAILoading(text = 'Generating summary...') {
+        const loading = this.$('#ai-loading');
+        const loadingText = this.$('#ai-loading-text');
+        const welcome = this.$('#ai-welcome');
+        const output = this.$('#ai-summary-output');
+        const errorEl = this.$('#ai-error');
+
+        if (welcome) welcome.classList.add('hidden');
+        if (output) output.classList.add('hidden');
+        if (errorEl) errorEl.classList.add('hidden');
+        if (loading) loading.classList.remove('hidden');
+        if (loadingText) loadingText.textContent = text;
+    },
+
+    // --- Hide AI Loading ---
+    hideAILoading() {
+        const loading = this.$('#ai-loading');
+        if (loading) loading.classList.add('hidden');
+    },
+
+    // --- Reset AI Sidebar ---
+    resetAISidebar() {
+        const welcome = this.$('#ai-welcome');
+        const output = this.$('#ai-summary-output');
+        const errorEl = this.$('#ai-error');
+        const loading = this.$('#ai-loading');
+        const messagesEl = this.$('#ai-chat-messages');
+
+        if (welcome) welcome.classList.remove('hidden');
+        if (output) { output.classList.add('hidden'); output.innerHTML = ''; }
+        if (errorEl) errorEl.classList.add('hidden');
+        if (loading) loading.classList.add('hidden');
+        if (messagesEl) { messagesEl.innerHTML = ''; messagesEl.classList.add('hidden'); }
+
+        this.updateAIStatus('disconnected');
+    },
+
+    // --- Update AI Settings UI ---
+    updateAISettingsUI() {
+        const settings = Storage.getAISettings();
+
+        const providerSelect = this.$('#ai-provider-select');
+        const modelSelect = this.$('#ai-model-select');
+        const ollamaUrl = this.$('#ai-ollama-url');
+        const lmstudioUrl = this.$('#ai-lmstudio-url');
+        const autoSummarize = this.$('#ai-auto-summarize');
+        const temperature = this.$('#ai-temperature');
+        const tempValue = this.$('#ai-temp-value');
+
+        if (providerSelect) providerSelect.value = settings.provider || 'auto';
+        if (modelSelect) modelSelect.value = settings.model || '';
+        if (ollamaUrl) ollamaUrl.value = settings.ollamaUrl || CONFIG.ai.ollamaUrl;
+        if (lmstudioUrl) lmstudioUrl.value = settings.lmstudioUrl || CONFIG.ai.lmstudioUrl;
+        if (autoSummarize) autoSummarize.checked = settings.autoSummarize || false;
+        if (temperature) temperature.value = settings.temperature ?? 0.7;
+        if (tempValue) tempValue.textContent = settings.temperature ?? 0.7;
+    },
+
+    // --- Populate AI Model Dropdown ---
+    setAIModels(models, selectedModel = '') {
+        const modelSelect = this.$('#ai-model-select');
+        if (!modelSelect) return;
+
+        modelSelect.innerHTML = '';
+
+        if (models.length === 0) {
+            modelSelect.innerHTML = '<option value="">No models found</option>';
+            return;
+        }
+
+        models.forEach(m => {
+            const option = document.createElement('option');
+            option.value = m.id;
+            option.textContent = m.name || m.id;
+            if (m.id === selectedModel) option.selected = true;
+            modelSelect.appendChild(option);
+        });
     },
 };

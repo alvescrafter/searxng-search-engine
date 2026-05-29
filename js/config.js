@@ -6,6 +6,15 @@ const CONFIG = {
     // Default SearXNG instance (local Docker)
     defaultInstance: 'http://localhost:8080',
 
+    // Fallback public instances (known to support JSON API + CORS)
+    fallbackInstances: [
+        'https://search.sapti.me',
+        'https://searx.be',
+        'https://search.bus-hit.me',
+        'https://searx.fmac.xyz',
+        'https://search.mdosch.de',
+    ],
+
     // API paths
     api: {
         search: '/search',
@@ -98,4 +107,22 @@ const CONFIG = {
 
     // Max autocomplete suggestions
     maxAutocomplete: 8,
+
+    // AI Summary settings
+    ai: {
+        provider: 'auto',       // 'auto' | 'ollama' | 'lmstudio'
+        model: '',              // Auto-detected or manual
+        ollamaUrl: 'http://localhost:11434',
+        lmstudioUrl: 'http://localhost:1234',
+        temperature: 0.7,
+        autoSummarize: false,   // Auto-summarize on search
+        sidebarOpen: false,     // Sidebar visibility state
+        maxResultsContext: 8,  // Max results sent to AI for context
+
+        // Proxy prefixes for Docker deployment (nginx routes)
+        proxyPrefix: {
+            ollama: '/ollama-api',
+            lmstudio: '/lmstudio-api',
+        },
+    },
 };

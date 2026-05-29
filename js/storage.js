@@ -138,6 +138,23 @@ const Storage = {
         this.set('search_cache_' + key, { data, timestamp: Date.now() });
     },
 
+    // --- AI Settings ---
+    getAISettings() {
+        return this.get('ai_settings', {
+            provider: CONFIG.ai.provider,
+            model: CONFIG.ai.model,
+            ollamaUrl: CONFIG.ai.ollamaUrl,
+            lmstudioUrl: CONFIG.ai.lmstudioUrl,
+            temperature: CONFIG.ai.temperature,
+            autoSummarize: CONFIG.ai.autoSummarize,
+            sidebarOpen: CONFIG.ai.sidebarOpen,
+        });
+    },
+
+    saveAISettings(settings) {
+        this.set('ai_settings', settings);
+    },
+
     // --- Clear All ---
     clearAll() {
         const keys = [];

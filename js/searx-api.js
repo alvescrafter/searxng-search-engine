@@ -7,16 +7,46 @@ const SearXAPI = {
     baseUrl: CONFIG.defaultInstance,
 
     // Whether to use the nginx proxy prefix
+    // Auto-detected on init: true if nginx proxy is available, false for direct calls
     useProxy: true,
+
+    // Whether proxy detection has been completed
+    _proxyDetected: false,
 
     // Abort controller for cancelling requests
     _abortController: null,
 
+    // --- Auto-detect proxy availability ---
+    // Checks if the nginx proxy (/api/) is reachable.
+    // Falls back to direct SearXNG calls if not behind nginx.
+    async detectProxy() {
+        if (this._proxyDetected) return;
+
+        try {
+            // Try the nginx proxy first (fast check)
+            const response = await fetch('/api/search?q=test&format=json', {
+                method: 'HEAD',
+                signal: AbortSignal.timeout(3000),
+            });
+            // If we get any response (even error), the proxy exists
+            this.useProxy = true;
+        } catch {
+            // Proxy not available — use direct SearXNG calls
+            this.useProxy = false;
+        }
+
+        this._proxyDetected = true;
+        console.log(`[SearXAPI] Proxy detected: ${this.useProxy ? 'nginx proxy' : 'direct connection'}`);
+    },
+
     // --- Set Instance ---
-    setInstance(url, useProxy = true) {
+    setInstance(url, useProxy = null) {
         // Normalize URL — remove trailing slash
         this.baseUrl = url.replace(/\/+$/, '');
-        this.useProxy = useProxy;
+        // If useProxy is explicitly set, use it; otherwise keep auto-detected value
+        if (useProxy !== null) {
+            this.useProxy = useProxy;
+        }
     },
 
     // --- Build API URL ---
@@ -64,16 +94,7 @@ const SearXAPI = {
         }
 
         try {
-            const response = await fetch(url, {
-                signal: this._abortController.signal,
-                headers: { 'Accept': 'application/json' },
-            });
-
-            if (!response.ok) {
-                throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-            }
-
-            const data = await response.json();
+            const data = await this._fetchWithCorsFallback(url, this._abortController.signal);
 
             // Cache the result
             Storage.setSearchCache(cacheKey, data);
@@ -82,6 +103,44 @@ const SearXAPI = {
         } catch (err) {
             if (err.name === 'AbortError') {
                 return null; // Request was cancelled
+            }
+            throw err;
+        }
+    },
+
+    // --- Fetch with CORS proxy fallback ---
+    // Tries direct fetch first, falls back to CORS proxies if blocked
+    async _fetchWithCorsFallback(url, signal, retries = 0) {
+        try {
+            const response = await fetch(url, {
+                signal,
+                headers: { 'Accept': 'application/json' },
+            });
+
+            if (!response.ok) {
+                throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+            }
+
+            return await response.json();
+        } catch (err) {
+            // Only try CORS proxy for network errors (CORS, connection refused, etc.)
+            // and only if we're not already using a proxy and haven't exhausted retries
+            if (!this.useProxy && retries < CONFIG.corsProxies.length && (err instanceof TypeError || err.name === 'TypeError')) {
+                const proxyUrl = CONFIG.corsProxies[retries] + encodeURIComponent(url);
+                console.log(`[SearXAPI] Direct fetch failed, trying CORS proxy: ${CONFIG.corsProxies[retries]}`);
+                try {
+                    const proxyResponse = await fetch(proxyUrl, {
+                        signal,
+                        headers: { 'Accept': 'application/json' },
+                    });
+                    if (!proxyResponse.ok) {
+                        throw new Error(`HTTP ${proxyResponse.status}`);
+                    }
+                    return await proxyResponse.json();
+                } catch {
+                    // Try next proxy
+                    return this._fetchWithCorsFallback(url, signal, retries + 1);
+                }
             }
             throw err;
         }
@@ -98,13 +157,7 @@ const SearXAPI = {
         const url = this._buildUrl(CONFIG.api.autocomplete, params);
 
         try {
-            const response = await fetch(url, {
-                signal: AbortSignal.timeout(3000),
-            });
-
-            if (!response.ok) return [];
-
-            const data = await response.json();
+            const data = await this._fetchWithCorsFallback(url, AbortSignal.timeout(3000));
 
             // SearXNG returns suggestions as array of strings
             // or as { suggestions: [...], infoboxes: [...] }
@@ -127,22 +180,17 @@ const SearXAPI = {
                 ? this._buildUrl(CONFIG.api.search, { q: 'test', format: 'json' })
                 : `${url.replace(/\/+$/, '')}/search?q=test&format=json`;
 
-            const response = await fetch(testUrl, {
-                signal: AbortSignal.timeout(8000),
-                headers: { 'Accept': 'application/json' },
-            });
+            try {
+                const data = await this._fetchWithCorsFallback(testUrl, AbortSignal.timeout(8000));
 
-            if (!response.ok) {
-                return { ok: false, error: `HTTP ${response.status}` };
+                if (data && (data.results !== undefined || data.query !== undefined)) {
+                    return { ok: true, version: data.version || 'unknown' };
+                }
+
+                return { ok: false, error: 'Invalid response format' };
+            } catch (fetchErr) {
+                return { ok: false, error: fetchErr.message };
             }
-
-            const data = await response.json();
-
-            if (data && (data.results !== undefined || data.query !== undefined)) {
-                return { ok: true, version: data.version || 'unknown' };
-            }
-
-            return { ok: false, error: 'Invalid response format' };
         } catch (err) {
             return { ok: false, error: err.message };
         }

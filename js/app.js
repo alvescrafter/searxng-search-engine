@@ -10,13 +10,74 @@ const App = {
     searchStartTime: 0,
     autocompleteTimer: null,
     autocompleteIndex: -1,
+    lastSearchResults: null, // Store results for AI summary
 
     // --- Initialize ---
-    init() {
+    async init() {
+        await this.detectProxy();
         this.loadSettings();
         this.bindEvents();
         this.updateUI();
+        this.initAISidebar();
         this.checkUrlParams();
+
+        // Test current instance and fall back if needed
+        await this.testAndFallbackInstance();
+    },
+
+    // --- Detect proxy availability ---
+    // Checks if nginx proxy is available (Docker deployment)
+    // Falls back to direct SearXNG calls (Live Server / development)
+    async detectProxy() {
+        await Promise.all([
+            SearXAPI.detectProxy(),
+            AIAPI.detectProxy(),
+        ]);
+    },
+
+    // --- Test current instance and fall back to alternatives ---
+    async testAndFallbackInstance() {
+        // Skip if behind nginx proxy (always works)
+        if (SearXAPI.useProxy) return;
+
+        const current = SearXAPI.baseUrl;
+
+        // Quick test — don't block the UI for too long
+        try {
+            const result = await SearXAPI.testConnection(current);
+            if (result.ok) return; // Current instance works
+        } catch {
+            // Connection failed, try fallbacks
+        }
+
+        console.warn(`[App] Instance ${current} not reachable, trying fallbacks…`);
+
+        // Try fallback instances
+        for (const fallback of CONFIG.fallbackInstances) {
+            if (fallback === current) continue; // Skip current (already tested)
+
+            try {
+                const test = await SearXAPI.testConnection(fallback);
+                if (test.ok) {
+                    console.log(`[App] Switched to fallback instance: ${fallback}`);
+                    SearXAPI.setInstance(fallback, false);
+
+                    // Update saved settings
+                    const settings = Storage.getSettings();
+                    settings.instance = fallback;
+                    settings.instanceMode = 'public';
+                    Storage.saveSettings(settings);
+
+                    UI.updateInstanceDisplay();
+                    UI.toast(`Switched to ${fallback} (local instance was unreachable)`, 'info', 5000);
+                    return;
+                }
+            } catch {
+                continue;
+            }
+        }
+
+        console.warn('[App] No reachable instance found');
     },
 
     // --- Load Settings ---
@@ -26,10 +87,9 @@ const App = {
         // Apply theme
         UI.applyTheme(settings.theme || 'dark');
 
-        // Set instance
+        // Set instance (don't override useProxy — auto-detection handles it)
         const instance = settings.instance || CONFIG.defaultInstance;
-        const mode = settings.instanceMode || 'local';
-        SearXAPI.setInstance(instance, mode === 'local');
+        SearXAPI.setInstance(instance, null);
 
         // Set default category
         this.currentCategory = settings.defaultCategory || 'general';
@@ -140,6 +200,9 @@ const App = {
         // Settings modal events
         this.bindSettingsEvents();
 
+        // AI Settings events
+        this.bindAISettingsEvents();
+
         // History modal events
         this.bindHistoryEvents();
 
@@ -154,6 +217,11 @@ const App = {
             if (e.key === 'Escape') {
                 UI.closeAllModals();
             }
+            // Ctrl+I to toggle AI sidebar
+            if (e.key === 'i' && e.ctrlKey && !e.target.closest('input, textarea, select')) {
+                e.preventDefault();
+                this.toggleAISidebar();
+            }
         });
 
         // Logo click — reset to home
@@ -165,6 +233,53 @@ const App = {
             retryBtn.addEventListener('click', () => {
                 if (this.currentQuery) this.executeSearch();
             });
+        }
+
+        // Switch Instance button (shown on connection errors)
+        const switchInstanceBtn = UI.$('#switch-instance-btn');
+        if (switchInstanceBtn) {
+            switchInstanceBtn.addEventListener('click', () => {
+                UI.openModal('instance-modal');
+            });
+        }
+
+        // AI Sidebar toggle button
+        const aiSidebarBtn = UI.$('#ai-sidebar-btn');
+        if (aiSidebarBtn) {
+            aiSidebarBtn.addEventListener('click', () => this.toggleAISidebar());
+        }
+
+        // AI Sidebar close button
+        const aiCloseBtn = UI.$('#ai-close-btn');
+        if (aiCloseBtn) {
+            aiCloseBtn.addEventListener('click', () => UI.hideAISidebar());
+        }
+
+        // AI Settings button
+        const aiSettingsBtn = UI.$('#ai-settings-btn');
+        if (aiSettingsBtn) {
+            aiSettingsBtn.addEventListener('click', () => this.openAISettings());
+        }
+
+        // AI Summarize button
+        const aiSummarizeBtn = UI.$('#ai-summarize-btn');
+        if (aiSummarizeBtn) {
+            aiSummarizeBtn.addEventListener('click', () => this.generateAISummary());
+        }
+
+        // AI Chat input
+        const aiChatInput = UI.$('#ai-chat-input');
+        const aiChatSend = UI.$('#ai-chat-send');
+        if (aiChatInput) {
+            aiChatInput.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault();
+                    this.sendAIChat();
+                }
+            });
+        }
+        if (aiChatSend) {
+            aiChatSend.addEventListener('click', () => this.sendAIChat());
         }
     },
 
@@ -475,9 +590,26 @@ const App = {
             // Scroll to results
             UI.$('#results-section')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
 
+            // Store results for AI summary
+            this.lastSearchResults = data.results || [];
+
+            // Auto-summarize if enabled and sidebar is open
+            const aiSettings = Storage.getAISettings();
+            if (aiSettings.autoSummarize && !UI.$('#ai-sidebar')?.classList.contains('hidden')) {
+                this.generateAISummary();
+            }
+
         } catch (err) {
             UI.hideLoading();
-            UI.showError(`Search failed: ${err.message}`);
+            // Show helpful error message with guidance
+            let errorMsg = err.message || 'Unknown error';
+            let helpHint = '';
+            if (errorMsg.includes('Failed to fetch') || errorMsg.includes('NetworkError') || errorMsg.includes('Network request failed') || errorMsg.includes('ERR_CONNECTION_REFUSED')) {
+                helpHint = ' — The search instance may be down. Try switching to a different instance (⚙ → Select Instance).';
+            } else if (errorMsg.includes('CORS') || errorMsg.includes('cross-origin')) {
+                helpHint = ' — This instance blocks cross-origin requests. Try a different public instance.';
+            }
+            UI.showError(`Search failed: ${errorMsg}${helpHint}`);
             UI.showResults();
             console.error('Search error:', err);
         }
@@ -599,22 +731,20 @@ const App = {
         // Test connection first
         UI.toast('Testing connection…', 'info');
 
-        // For local Docker, test via proxy
-        if (mode === 'local') {
-            try {
-                const savedProxy = SearXAPI.useProxy;
-                SearXAPI.useProxy = true;
-                const result = await SearXAPI.testConnection(url);
-                SearXAPI.useProxy = savedProxy;
+        try {
+            // For local mode, use auto-detected proxy; for public/custom, use direct
+            const useProxy = mode === 'local' ? null : false;
+            SearXAPI.setInstance(url, useProxy);
 
-                if (!result.ok) {
-                    UI.toast(`Connection failed: ${result.error}`, 'error');
-                    return;
-                }
-            } catch (err) {
-                UI.toast(`Connection test failed: ${err.message}`, 'error');
+            const result = await SearXAPI.testConnection(url);
+
+            if (!result.ok) {
+                UI.toast(`Connection failed: ${result.error}`, 'error');
                 return;
             }
+        } catch (err) {
+            UI.toast(`Connection test failed: ${err.message}`, 'error');
+            return;
         }
 
         await Instances.connect(url, mode);
@@ -640,6 +770,7 @@ const App = {
     goHome() {
         this.currentQuery = '';
         this.currentPage = 1;
+        this.lastSearchResults = null;
         UI.$('#search-input').value = '';
         UI.$('#clear-btn').classList.remove('visible');
         UI.hideResults();
@@ -648,6 +779,8 @@ const App = {
         UI.hideLoading();
         UI.expandSearch();
         UI.$('#pagination')?.classList.add('hidden');
+        AISummary.reset();
+        UI.resetAISidebar();
     },
 
     // --- Check URL Params ---
@@ -671,7 +804,292 @@ const App = {
             this.search();
         }
     },
+
+    // ========================================
+    // AI Sidebar Methods
+    // ========================================
+
+    // --- Initialize AI Sidebar ---
+    initAISidebar() {
+        const aiSettings = Storage.getAISettings();
+
+        // Restore sidebar state
+        if (aiSettings.sidebarOpen) {
+            UI.showAISidebar();
+        }
+
+        // Try auto-detecting AI providers
+        this.detectAIProviders();
+    },
+
+    // --- Toggle AI Sidebar ---
+    toggleAISidebar() {
+        const show = UI.toggleAISidebar();
+        if (show) {
+            this.detectAIProviders();
+        }
+    },
+
+    // --- Detect AI Providers ---
+    async detectAIProviders() {
+        UI.updateAIStatus('disconnected');
+
+        try {
+            const detection = await AIAPI.autoDetect();
+
+            if (detection.available) {
+                const provider = detection.providers[0];
+                const model = provider.models[0]?.id || '';
+                UI.updateAIStatus('connected', model);
+
+                // Auto-save detected provider
+                const aiSettings = Storage.getAISettings();
+                if (aiSettings.provider === 'auto') {
+                    aiSettings._detectedProvider = provider.provider;
+                    aiSettings._detectedModel = model;
+                }
+                Storage.saveAISettings(aiSettings);
+            }
+        } catch {
+            // Detection failed silently — user can configure manually
+        }
+    },
+
+    // --- Generate AI Summary ---
+    async generateAISummary() {
+        if (!this.currentQuery || !this.lastSearchResults?.length) {
+            UI.showAIError('Search for something first to generate a summary.');
+            return;
+        }
+
+        if (AISummary.isGenerating) {
+            AISummary.cancelGeneration();
+            return;
+        }
+
+        const summarizeBtn = UI.$('#ai-summarize-btn');
+        if (summarizeBtn) {
+            summarizeBtn.classList.add('generating');
+            summarizeBtn.innerHTML = `
+                <svg viewBox="0 0 24 24" width="16" height="16"><path d="M17.65 6.35A7.958 7.958 0 0 0 12 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08A5.99 5.99 0 0 1 12 18c-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z" fill="currentColor"/></svg>
+                Cancel
+            `;
+        }
+
+        UI.showAILoading('Generating summary...');
+        UI.updateAIStatus('generating');
+
+        try {
+            await AISummary.generateSummary(this.currentQuery, this.lastSearchResults);
+        } catch (err) {
+            UI.showAIError(err.message);
+            UI.updateAIStatus('error');
+        } finally {
+            if (summarizeBtn) {
+                summarizeBtn.classList.remove('generating');
+                summarizeBtn.innerHTML = `
+                    <svg viewBox="0 0 24 24" width="16" height="16"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                    Summarize Results
+                `;
+            }
+        }
+    },
+
+    // --- Send AI Chat Message ---
+    async sendAIChat() {
+        const input = UI.$('#ai-chat-input');
+        if (!input) return;
+
+        const message = input.value.trim();
+        if (!message) return;
+
+        if (AISummary.isGenerating) return;
+
+        // Add user message to chat UI
+        UI.addChatMessage('user', message);
+        input.value = '';
+
+        // Disable send button while generating
+        const sendBtn = UI.$('#ai-chat-send');
+        if (sendBtn) sendBtn.disabled = true;
+
+        UI.updateAIStatus('generating');
+
+        try {
+            await AISummary.sendChat(message);
+        } catch (err) {
+            UI.showAIError(err.message);
+            UI.updateAIStatus('error');
+        } finally {
+            if (sendBtn) sendBtn.disabled = false;
+            UI.updateAIStatus('connected', Storage.getAISettings()._detectedModel || Storage.getAISettings().model);
+        }
+    },
+
+    // --- Open AI Settings Modal ---
+    openAISettings() {
+        UI.updateAISettingsUI();
+        UI.openModal('ai-settings-modal');
+    },
+
+    // --- Bind AI Settings Events ---
+    bindAISettingsEvents() {
+        // Provider select
+        const providerSelect = UI.$('#ai-provider-select');
+        if (providerSelect) {
+            providerSelect.addEventListener('change', (e) => {
+                const settings = Storage.getAISettings();
+                settings.provider = e.target.value;
+                Storage.saveAISettings(settings);
+            });
+        }
+
+        // Model select
+        const modelSelect = UI.$('#ai-model-select');
+        if (modelSelect) {
+            modelSelect.addEventListener('change', (e) => {
+                const settings = Storage.getAISettings();
+                settings.model = e.target.value;
+                Storage.saveAISettings(settings);
+                UI.updateAIStatus('connected', e.target.value);
+            });
+        }
+
+        // Detect models button
+        const detectBtn = UI.$('#ai-detect-btn');
+        if (detectBtn) {
+            detectBtn.addEventListener('click', async () => {
+                const statusEl = UI.$('#ai-detection-status');
+                if (statusEl) {
+                    statusEl.className = 'ai-detection-status detecting';
+                    statusEl.textContent = 'Detecting AI models...';
+                    statusEl.classList.remove('hidden');
+                }
+
+                try {
+                    const detection = await AIAPI.autoDetect();
+
+                    if (detection.available) {
+                        const allModels = detection.providers.flatMap(p =>
+                            p.models.map(m => ({ ...m, provider: p.provider }))
+                        );
+
+                        UI.setAIModels(allModels, '');
+
+                        if (statusEl) {
+                            statusEl.className = 'ai-detection-status success';
+                            const providerNames = detection.providers.map(p => p.provider).join(', ');
+                            statusEl.textContent = `Found ${allModels.length} model(s) on ${providerNames}`;
+                        }
+
+                        // Auto-select first model
+                        if (allModels.length > 0) {
+                            const settings = Storage.getAISettings();
+                            settings.model = allModels[0].id;
+                            settings._detectedProvider = detection.providers[0].provider;
+                            settings._detectedModel = allModels[0].id;
+                            Storage.saveAISettings(settings);
+
+                            if (modelSelect) modelSelect.value = allModels[0].id;
+                            UI.updateAIStatus('connected', allModels[0].id);
+                        }
+                    } else {
+                        UI.setAIModels([]);
+                        if (statusEl) {
+                            statusEl.className = 'ai-detection-status error';
+                            statusEl.textContent = 'No AI providers found. Make sure Ollama or LM Studio is running.';
+                        }
+                    }
+                } catch (err) {
+                    if (statusEl) {
+                        statusEl.className = 'ai-detection-status error';
+                        statusEl.textContent = `Detection failed: ${err.message}`;
+                    }
+                }
+            });
+        }
+
+        // Test Ollama connection
+        const testOllamaBtn = UI.$('#ai-test-ollama');
+        if (testOllamaBtn) {
+            testOllamaBtn.addEventListener('click', async () => {
+                const statusEl = UI.$('#ai-ollama-status');
+                const urlInput = UI.$('#ai-ollama-url');
+                const url = urlInput?.value.trim() || CONFIG.ai.ollamaUrl;
+
+                if (statusEl) { statusEl.textContent = 'Testing...'; statusEl.className = 'ai-conn-status'; }
+
+                const result = await AIAPI.testConnection('ollama', url);
+                if (result.ok) {
+                    if (statusEl) { statusEl.textContent = `✓ Connected (${result.models.length} models)`; statusEl.className = 'ai-conn-status success'; }
+                } else {
+                    if (statusEl) { statusEl.textContent = `✗ ${result.error}`; statusEl.className = 'ai-conn-status error'; }
+                }
+            });
+        }
+
+        // Test LM Studio connection
+        const testLMStudioBtn = UI.$('#ai-test-lmstudio');
+        if (testLMStudioBtn) {
+            testLMStudioBtn.addEventListener('click', async () => {
+                const statusEl = UI.$('#ai-lmstudio-status');
+                const urlInput = UI.$('#ai-lmstudio-url');
+                const url = urlInput?.value.trim() || CONFIG.ai.lmstudioUrl;
+
+                if (statusEl) { statusEl.textContent = 'Testing...'; statusEl.className = 'ai-conn-status'; }
+
+                const result = await AIAPI.testConnection('lmstudio', url);
+                if (result.ok) {
+                    if (statusEl) { statusEl.textContent = `✓ Connected (${result.models.length} models)`; statusEl.className = 'ai-conn-status success'; }
+                } else {
+                    if (statusEl) { statusEl.textContent = `✗ ${result.error}`; statusEl.className = 'ai-conn-status error'; }
+                }
+            });
+        }
+
+        // Ollama URL change
+        const ollamaUrlInput = UI.$('#ai-ollama-url');
+        if (ollamaUrlInput) {
+            ollamaUrlInput.addEventListener('change', (e) => {
+                const settings = Storage.getAISettings();
+                settings.ollamaUrl = e.target.value.trim();
+                Storage.saveAISettings(settings);
+            });
+        }
+
+        // LM Studio URL change
+        const lmstudioUrlInput = UI.$('#ai-lmstudio-url');
+        if (lmstudioUrlInput) {
+            lmstudioUrlInput.addEventListener('change', (e) => {
+                const settings = Storage.getAISettings();
+                settings.lmstudioUrl = e.target.value.trim();
+                Storage.saveAISettings(settings);
+            });
+        }
+
+        // Auto-summarize toggle
+        const autoSumToggle = UI.$('#ai-auto-summarize');
+        if (autoSumToggle) {
+            autoSumToggle.addEventListener('change', (e) => {
+                const settings = Storage.getAISettings();
+                settings.autoSummarize = e.target.checked;
+                Storage.saveAISettings(settings);
+            });
+        }
+
+        // Temperature slider
+        const tempSlider = UI.$('#ai-temperature');
+        const tempValue = UI.$('#ai-temp-value');
+        if (tempSlider) {
+            tempSlider.addEventListener('input', (e) => {
+                if (tempValue) tempValue.textContent = e.target.value;
+                const settings = Storage.getAISettings();
+                settings.temperature = parseFloat(e.target.value);
+                Storage.saveAISettings(settings);
+            });
+        }
+    },
 };
 
 // --- Start App ---
-document.addEventListener('DOMContentLoaded', () => App.init());
+document.addEventListener('DOMContentLoaded', () => { App.init(); });

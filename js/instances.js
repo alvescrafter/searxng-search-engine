@@ -135,7 +135,9 @@ const Instances = {
         settings.instanceMode = mode;
         Storage.saveSettings(settings);
 
-        SearXAPI.setInstance(settings.instance, mode === 'local');
+        // Don't override useProxy — let auto-detection decide
+        // (useProxy is auto-detected based on whether nginx proxy is available)
+        SearXAPI.setInstance(settings.instance, null);
     },
 
     // --- Get current instance info ---

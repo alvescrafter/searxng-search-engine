@@ -22,6 +22,17 @@ server:
   image_proxy: true
   method: "GET"
 
+  # Enable CORS so the frontend can call SearXNG directly
+  # when not behind nginx (e.g. VS Code Live Server on port 5500)
+  default_http_headers:
+    X-Content-Type-Options: nosniff
+    X-Download-Options: noopen
+    X-Robots-Tag: noindex, nofollow
+    Referrer-Policy: no-referrer
+    Access-Control-Allow-Origin: "*"
+    Access-Control-Allow-Methods: "GET, POST, OPTIONS"
+    Access-Control-Allow-Headers: "Content-Type, Authorization"
+
 ui:
   static_use_hash: true
   default_locale: ""

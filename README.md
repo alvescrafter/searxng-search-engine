@@ -1,11 +1,14 @@
 # SearXNG Search Engine
 
-A modern, privacy-respecting search engine frontend powered by SearXNG, running in Docker with a custom card-based dashboard UI.
+A modern, privacy-respecting search engine frontend powered by SearXNG, with AI-powered summaries and chat.
 
 ## Features
 
 - **8 Search Categories**: General, Images, Videos, News, Maps, Science/IT, Music, Files
+- **AI Summary Sidebar**: Auto-detects Ollama/LM Studio, summarizes results, chat with context
 - **Multiple Instance Support**: Local Docker, public searx.space instances, or custom URLs
+- **Auto-Fallback**: If the current instance is unreachable, automatically tries fallback instances
+- **CORS Proxy Fallback**: If a public instance blocks CORS, automatically tries CORS proxies
 - **Modern UI**: Card-based results with dark/light themes
 - **Privacy-First**: All searches proxied through SearXNG — no direct requests to search engines
 - **Autocomplete**: Real-time search suggestions from SearXNG
@@ -15,7 +18,7 @@ A modern, privacy-respecting search engine frontend powered by SearXNG, running 
 
 ## Quick Start
 
-### 1. Start with Docker Compose
+### Option A: Run with Docker (Recommended)
 
 ```bash
 docker compose up -d
@@ -26,13 +29,17 @@ This starts three services:
 - **Valkey** (Redis-compatible cache) on port 6379 (internal)
 - **Nginx** on port 3000 (frontend + API proxy)
 
-### 2. Open in Browser
-
-Navigate to: **http://localhost:3000**
+Then navigate to: **http://localhost:3000**
 
 Nginx serves the frontend and proxies `/api/` requests to SearXNG, eliminating CORS issues.
 
-### 3. Configure (Optional)
+The app defaults to `http://localhost:8080` (local Docker). If Docker is down, it automatically falls back to public SearXNG instances.
+
+### Option B: Use Without Docker
+
+Open `index.html` in a browser or use VS Code Live Server. The app will try `localhost:8080` first, then automatically fall back to public instances if Docker isn't running.
+
+### Configure (Optional)
 
 Edit `.env` to change ports:
 ```env
@@ -43,6 +50,13 @@ SEARXNG_SECRET=change-this-to-a-random-string
 
 ## Architecture
 
+### Without Docker (Live Server / Direct)
+```
+Browser → Public SearXNG instance (direct JSON API calls)
+         ↳ Falls back to CORS proxy if needed
+```
+
+### With Docker
 ```
 Browser → Nginx (:3000) → SearXNG (:8080)
                 ↓
@@ -57,9 +71,15 @@ Browser → Nginx (:3000) → SearXNG (:8080)
 
 | Mode | Description |
 |------|-------------|
-| **Local Docker** | Default — uses the SearXNG instance running in Docker (via nginx proxy) |
+| **Local Docker** | Default — uses SearXNG at `localhost:8080` (via nginx proxy or direct) |
 | **Public** | Browse and select from public instances listed on searx.space |
 | **Custom** | Enter any SearXNG instance URL manually |
+
+The app automatically:
+1. Detects if nginx proxy is available (Docker mode)
+2. Falls back to direct API calls (Live Server / development mode)
+3. Tests the current instance on startup and switches to a fallback if unreachable
+4. Uses CORS proxies if a public instance blocks cross-origin requests
 
 ## Search Categories
 
@@ -88,19 +108,21 @@ Browser → Nginx (:3000) → SearXNG (:8080)
 ```
 ├── docker-compose.yml      # Docker services (searxng, valkey, nginx)
 ├── .env                    # Environment variables
-├── nginx.conf              # Nginx config (static + API proxy)
+├── nginx.conf              # Nginx config (static + API proxy + AI proxy)
 ├── searxng/
-│   └── settings.yml        # SearXNG configuration
-├── index.html              # Main HTML shell
+│   └── settings.yml        # SearXNG configuration (CORS headers enabled)
+├── index.html              # Main HTML shell (search + AI sidebar)
 ├── css/
 │   └── style.css           # Full styling with dark/light themes
 ├── js/
-│   ├── config.js           # Category definitions, defaults, API config
-│   ├── storage.js          # localStorage persistence
-│   ├── searx-api.js        # SearXNG JSON API client
+│   ├── config.js           # Category definitions, defaults, API config, fallback instances
+│   ├── storage.js          # localStorage persistence (settings, history, AI settings)
+│   ├── searx-api.js        # SearXNG JSON API client (with CORS proxy fallback)
 │   ├── instances.js         # Instance management (searx.space, custom)
-│   ├── ui.js               # DOM helpers, card rendering, modals
-│   └── app.js              # Main app logic, event handlers
+│   ├── ai-api.js           # AI provider module (Ollama/LM Studio detection, streaming)
+│   ├── ai-summary.js       # AI summary generation, chat, markdown rendering
+│   ├── ui.js               # DOM helpers, card rendering, modals, AI sidebar
+│   └── app.js              # Main app logic, event handlers, auto-fallback
 └── icons/
     └── favicon.svg          # Search icon favicon
 ```
@@ -109,10 +131,12 @@ Browser → Nginx (:3000) → SearXNG (:8080)
 
 The frontend uses SearXNG's JSON API:
 
-- **Search**: `GET /api/search?q={query}&format=json&categories={cat}&language={lang}&pageno={page}&time_range={range}&safesearch={level}`
-- **Autocomplete**: `GET /api/autocompleter?q={partial}`
+- **Search**: `GET /search?q={query}&format=json&categories={cat}&language={lang}&pageno={page}&time_range={range}&safesearch={level}`
+- **Autocomplete**: `GET /autocompleter?q={partial}`
 
-All requests go through nginx proxy (`/api/` → SearXNG) to avoid CORS.
+When behind nginx (Docker), requests go through `/api/` proxy prefix.
+When running directly (Live Server), requests go directly to the SearXNG instance URL.
+If CORS is blocked, requests fall back to CORS proxy services.
 
 ## Customization
 
